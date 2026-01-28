@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>4 Months of Us</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Courier New', Courier, monospace; }
+        
+        /* Start Screen - Now Transparent! */
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); /* See-through dark tint */
+            z-index: 999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease;
+            backdrop-filter: blur(4px); /* Blur effect like frosted glass */
+        }
+        
+        #start-btn {
+            padding: 15px 40px; background: rgba(255, 153, 204, 0.2); 
+            color: #ff99cc; border: 2px solid #ff99cc; border-radius: 50px; 
+            font-size: 18px; cursor: pointer; text-transform: uppercase; 
+            letter-spacing: 3px; transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(255, 153, 204, 0.3);
+        }
+        #start-btn:hover { 
+            background: #ff99cc; color: black; 
+            box-shadow: 0 0 40px #ff99cc; transform: scale(1.1);
+        }
+
+        /* Music Control */
+        #music-btn {
+            position: absolute; top: 20px; right: 20px; z-index: 200;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 10px; border-radius: 50%; cursor: pointer;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; transition: all 0.3s; opacity: 0; 
+        }
+        #music-btn:hover { background: rgba(255,255,255,0.3); transform: rotate(360deg); }
+
+        /* Memory Card */
+        #memory-card {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 340px; padding: 30px;
+            background: rgba(15, 15, 20, 0.95); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 15px;
+            color: white; text-align: center; opacity: 0; pointer-events: none;
+            transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8); display: none; z-index: 100;
+        }
+        #memory-card.active { opacity: 1; pointer-events: auto; display: block; }
+        #memory-card h2 { margin-top: 0; color: #ff99cc; text-transform: uppercase; letter-spacing: 2px; font-size: 16px; margin-bottom: 15px; }
+        #memory-card p { font-size: 13px; line-height: 1.8; color: #ccc; margin-bottom: 20px; font-family: sans-serif; }
+        
+        #memory-img-container {
+            width: 100%; height: 250px; overflow: hidden; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; background: #000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        #card-img:hover { transform: scale(1.05); }
+        
+        #close-btn {
+            padding: 12px 30px; background: white; color: black; border: none;
+            border-radius: 30px; cursor: pointer; font-weight: bold; text-transform: uppercase;
+            font-size: 11px; letter-spacing: 1px; transition: background 0.3s;
+        }
+        #close-btn:hover { background: #ff99cc; }
+        
+        #instructions {
+            position: absolute; bottom: 30px; width: 100%; text-align: center;
+            color: rgba(255, 255, 255, 0.5); pointer-events: none;
+            font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+            text-shadow: 0 2px 4px black;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <button id="start-btn">▶ Play Music & Enter</button>
+    </div>
+
+    <audio id="bg-music" loop>
+        <source src="song.mp3" type="audio/mp3">
+        <source src="song.wav" type="audio/wav"> </audio>
+
+    <button id="music-btn">🎵</button>
+
+    <div id="memory-card">
+        <div id="memory-img-container"><img id="card-img" src="" alt="Memory"></div>
+        <h2 id="card-title">Title</h2>
+        <p id="card-desc">Description</p>
+        <button id="close-btn">Close</button>
+    </div>
+
+    <div id="instructions">Look around with your mouse • Click the glowing orbs</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        // --- CUSTOM DATA ---
+        // Make sure your photos are named exactly: photo1.jpg, photo2.jpg, etc.
+        const memories = [
+            {
+                title: "My Safe Place",
+                text: "I love these goofy moments with you more than anything. Holding you like this, just being us, makes all the noise of the world disappear. You are my favorite distraction and my safe space.",
+                image: "photo1.jpg", color: 0xff0055, position: { x: 0, y: 0, z: -5 }
+            },
+            {
+                title: "Pure Elegance",
+                text: "I remember looking at you in this saree and thinking, 'How did I get so lucky?' You looked absolutely breathtaking. I promise to always cherish you and treat you like the queen you are.",
+                image: "photo2.jpg", color: 0xffaa00, position: { x: 12, y: 3, z: -10 }
+            },
+            {
+                title: "Only You",
+                text: "The way we look at each other here says it all. No words needed. Just you, me, and this perfect connection. In a room full of people, my eyes would still search for you.",
+                image: "photo3.jpg", color: 0x00aaff, position: { x: -12, y: -3, z: -10 }
+            },
+            {
+                title: "Everyday Adventures",
+                text: "From long drives to silly selfies, every second with you is my new favorite memory. Your smile lights up my whole world. Happy 4 months, my love. Here is to a lifetime of rides together.",
+                image: "photo4.jpg", color: 0xaa00ff, position: { x: 0, y: 10, z: 5 }
+            }
+        ];
+
+        // --- MUSIC & START LOGIC ---
+        const startBtn = document.getElementById('start-btn');
+        const startScreen = document.getElementById('start-screen');
+        const musicBtn = document.getElementById('music-btn');
+        const audio = document.getElementById('bg-music');
+        
+        startBtn.addEventListener('click', () => {
+            // Fade out start screen
+            startScreen.style.opacity = '0';
+            setTimeout(() => { startScreen.style.display = 'none'; }, 800);
+            
+            // Show UI
+            musicBtn.style.opacity = '1';
+
+            // Play Audio
+            audio.volume = 0.4; 
+            audio.play().catch(e => console.log("Audio play failed (check filename):", e));
+        });
+
+        let isPlaying = true;
+        musicBtn.addEventListener('click', () => {
+            if(isPlaying) { audio.pause(); musicBtn.innerText = "🔇"; } 
+            else { audio.play(); musicBtn.innerText = "🎵"; }
+            isPlaying = !isPlaying;
+        });
+
+        // --- 3D SCENE SETUP ---
+        const scene = new THREE.Scene();
+        // REMOVED FOG so everything is clear
+        // scene.fog = new THREE.FogExp2(0x000000, 0.02); 
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 22; // Moved back slightly to see everything better
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // --- STARS ---
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 5000;
+        const posArray = new Float32Array(starCount * 3);
+        for(let i=0; i<starCount*3; i++) { posArray[i] = (Math.random() - 0.5) * 300; }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const starMat = new THREE.PointsMaterial({ size: 0.15, color: 0xffffff, transparent: true, opacity: 0.8 });
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // --- ORBS ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const orbs = [];
+
+        memories.forEach((data) => {
+            // Main Sphere (BIGGER NOW)
+            const geo = new THREE.SphereGeometry(2.0, 64, 64);
+            const mat = new THREE.MeshBasicMaterial({ color: data.color, wireframe: true, transparent: true, opacity: 0.6 });
+            const orb = new THREE.Mesh(geo, mat);
+            
+            // Inner Core (Bright)
+            const coreGeo = new THREE.SphereGeometry(0.8, 32, 32);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            orb.add(core);
+
+            // Outer Glow (New)
+            const glowGeo = new THREE.SphereGeometry(2.2, 32, 32);
+            const glowMat = new THREE.MeshBasicMaterial({ color: data.color, transparent: true, opacity: 0.15 });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            orb.add(glow);
+
+            orb.position.set(data.position.x, data.position.y, data.position.z);
+            orb.userData = data; 
+            scene.add(orb);
+            orbs.push(orb);
+        });
+
+        // --- INTERACTION ---
+        let isZoomed = false;
+        const memoryCard = document.getElementById('memory-card');
+        const titleEl = document.getElementById('card-title');
+        const descEl = document.getElementById('card-desc');
+        const imgEl = document.getElementById('card-img');
+        const closeBtn = document.getElementById('close-btn');
+
+        let targetX = 0; let targetY = 0;
+        document.addEventListener('mousemove', (e) => {
+            if(!isZoomed) {
+                const x = (e.clientX - window.innerWidth/2) / (window.innerWidth/2);
+                const y = (e.clientY - window.innerHeight/2) / (window.innerHeight/2);
+                targetX = -x * 0.4; // Reduced rotation speed for stability
+                targetY = -y * 0.4;
+            }
+        });
+
+        window.addEventListener('mousedown', onInteract);
+        window.addEventListener('touchstart', (e) => {
+            mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            checkIntersection();
+        });
+
+        function onInteract(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            checkIntersection();
+        }
+
+        function checkIntersection() {
+            if (isZoomed) return;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(orbs);
+            if (intersects.length > 0) { focusOnOrb(intersects[0].object); }
+        }
+
+        function focusOnOrb(orb) {
+            isZoomed = true; targetX = 0; targetY = 0;
+            
+            // Move camera in front of orb
+            const targetPos = { x: orb.position.x, y: orb.position.y, z: orb.position.z + 8 };
+
+            new TWEEN.Tween(camera.position).to(targetPos, 1200).easing(TWEEN.Easing.Cubic.Out).onUpdate(() => camera.lookAt(orb.position)).start();
+
+            setTimeout(() => {
+                titleEl.innerText = orb.userData.title;
+                descEl.innerText = orb.userData.text;
+                imgEl.src = orb.userData.image; 
+                memoryCard.classList.add('active');
+            }, 800);
+        }
+
+        closeBtn.addEventListener('click', () => {
+            memoryCard.classList.remove('active');
+            new TWEEN.Tween(camera.position).to({ x: 0, y: 0, z: 22 }, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+            new TWEEN.Tween(camera.rotation).to({ x: 0, y: 0, z: 0 }, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+            setTimeout(() => { isZoomed = false; }, 1500);
+        });
+
+        // --- ANIMATION LOOP ---
+        function animate(time) {
+            requestAnimationFrame(animate);
+            TWEEN.update(time);
+
+            if(!isZoomed) {
+                camera.rotation.y += 0.05 * (targetX - camera.rotation.y);
+                camera.rotation.x += 0.05 * (targetY - camera.rotation.x);
+            }
+
+            stars.rotation.y += 0.0003; 
+            
+            orbs.forEach((orb, i) => {
+                orb.rotation.x += 0.01; 
+                orb.rotation.y += 0.01;
+                // Pulse Effect
+                const scale = 1 + Math.sin(time * 0.002 + i) * 0.1;
+                orb.scale.set(scale, scale, scale);
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
